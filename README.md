@@ -9,7 +9,14 @@ Then
 Enter your new password
 
     CREATE DATABASE "the-tensox";
+    \q
 
+Then
+```
+echo -e "DATABASE_URL=postgres://postgres:mypass@localhost/the-tensox-api
+ROCKET_ADDRESS=localhost
+ROCKET_PORT=8001" > .env
+```
     cargo install diesel_cli --no-default-features --features postgres
     diesel migration run
     rustup default nightly # Pear requires a nightly or dev version of Rust
