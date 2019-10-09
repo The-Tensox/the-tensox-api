@@ -18,13 +18,14 @@ ROCKET_ADDRESS=localhost
 ROCKET_PORT=8001" > .env
 ```
     cargo install diesel_cli --no-default-features --features postgres
+    diesel setup
     diesel migration run
     rustup default nightly # Pear requires a nightly or dev version of Rust
     cargo run
 
 Open another terminal
 
-    curl -d '{"id":1, "x":0, "y":0, "sun":3}' -H "Content-Type: application/json" -X POST http://localhost:8001/weather
+    curl -d '{"id":1, "x":0, "y":0, "sun":3}' -H "Content-Type: application/json" -X POST http://localhost:8001/weathers
 
 # Dev
 

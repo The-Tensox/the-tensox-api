@@ -10,7 +10,7 @@ extern crate serde_derive;
 
 use dotenv::dotenv;
 
-mod weather;
+mod weathers;
 mod schema;
 mod connection;
 
@@ -18,11 +18,11 @@ fn main() {
     dotenv().ok();
     rocket::ignite()
         .manage(connection::init_pool())
-        .mount("/weather",
-               routes![weather::handler::all,
-                    weather::handler::get,
-                    weather::handler::post,
-                    weather::handler::put,
-                    weather::handler::delete],
+        .mount("/weathers",
+               routes![weathers::handler::all,
+                    weathers::handler::get,
+                    weathers::handler::post,
+                    weathers::handler::put,
+                    weathers::handler::delete],
         ).launch();
 }
