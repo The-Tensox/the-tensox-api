@@ -9,6 +9,10 @@ jobs:
       - restore_cache:
           key: project-cache
       - run:
+          name: Switch to nightly
+          command: |
+            rustup default nightly
+      - run:
           name: Build
           command: |
             cargo build
