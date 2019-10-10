@@ -1,3 +1,15 @@
+# the-tensox-api
+[![Try it on gitpod](https://img.shields.io/badge/try-on%20gitpod-brightgreen.svg)](https://gitpod.io/#https://github.com/The-Tensox/the-tensox-api)
+[![Build Status](https://img.shields.io/circleci/project/The-Tensox/the-tensox-api/master.svg)](https://circleci.com/gh/The-Tensox/the-tensox-api)
+
+- REST API to access the-tensox data
+- WebSocket server notifying clients on POST / PUT
+
+**Ugly schema**
+
+<img src="docs/images/the-tensox-api.png" width="500">
+
+# Installation
     sudo apt install postgresql-11 libpq-dev
     sudo service postgresql start
     sudo -u postgres psql postgres
@@ -21,11 +33,21 @@ ROCKET_PORT=8001" > .env
     diesel setup
     diesel migration run
     rustup default nightly # Pear requires a nightly or dev version of Rust
-    cargo run
+    
+# Usage
+    cargo run &
 
-Open another terminal
-
+    # POST weather
     curl -d '{"id":1, "x":0, "y":0, "sun":3}' -H "Content-Type: application/json" -X POST http://localhost:8001/weathers
+    
+    # GET weather
+    curl http://localhost:8001/weathers
+
+    # POST object
+    curl -d '{"id":1, "x":0, "y":0, "z":0, "scale_x":0, "scale_y":0, "scale_z":0, "height": 0, "radius": 0}' -H "Content-Type: application/json" -X POST http://localhost:8001/objects
+
+    # GET object
+    curl http://localhost:8001/objects
 
 # Dev
 
@@ -42,3 +64,6 @@ Don't forget ; at the end of SQL query (and upper case)
     \c db
     # Show tables
     \dt
+
+# TODO
+ - [] When a POST / PUT is done notify the (created / updated) value to the connected clients via websocket
