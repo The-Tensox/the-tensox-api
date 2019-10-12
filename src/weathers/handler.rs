@@ -6,6 +6,9 @@ use weathers::Weather;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket_contrib::json::Json;
+use rocket::State;
+use server::Server;
+use std::sync::{Arc, Mutex};
 
 #[get("/")]
 pub fn all(connection: DbConn) -> Result<Json<Vec<Weather>>, Status> {
@@ -29,9 +32,23 @@ pub fn get(id: i32, connection: DbConn) -> Result<Json<Weather>, Status> {
 }
 
 #[post("/", format = "application/json", data = "<weathers>")]
-pub fn post(weathers: Json<Weather>, connection: DbConn) -> Result<status::Created<Json<Weather>>, Status> {
+pub fn post(weathers: Json<Weather>, connection: DbConn, server: State<Arc<Mutex<Server>>>) -> Result<status::Created<Json<Weather>>, Status> {
     weathers::repository::insert(weathers.into_inner(), &connection)
-        .map(|weathers| weather_created(weathers))
+        .map(|weathers| {
+            let res = weather_created(weathers.clone());
+            if !server.inner().lock().unwrap().out.is_none() {
+                println!("Sending a message");
+                // Get the Json<Weather>> inside Created with .0 and converts it to string to send
+                // Broadcast the new item to all clients
+                // inner() get the thing inside State, then lock mutex, unwrap ...
+                // We send the serialized data
+                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&weathers).unwrap());
+            } else {
+                println!("No clients connected");
+            }
+
+            res
+        })
         .map_err(|error| error_status(error))
 }
 
@@ -50,9 +67,21 @@ fn port() -> String {
 }
 
 #[put("/<id>", format = "application/json", data = "<weathers>")]
-pub fn put(id: i32, weathers: Json<Weather>, connection: DbConn) -> Result<Json<Weather>, Status> {
+pub fn put(id: i32, weathers: Json<Weather>, connection: DbConn, server: State<Arc<Mutex<Server>>>) -> Result<Json<Weather>, Status> {
     weathers::repository::update(id, weathers.into_inner(), &connection)
-        .map(|weathers| Json(weathers))
+        .map(|weathers| {
+            if !server.inner().lock().unwrap().out.is_none() {
+                println!("Sending a message");
+                // Get the Json<Weather>> inside Created with .0 and converts it to string to send
+                // Broadcast the new item to all clients
+                // inner() get the thing inside State, then lock mutex, unwrap ...
+                // We send the serialized data
+                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&weathers).unwrap());
+            } else {
+                println!("No clients connected");
+            }
+            Json(weathers)
+        })
         .map_err(|error| error_status(error))
 }
 

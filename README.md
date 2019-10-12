@@ -25,7 +25,7 @@ Enter your new password
 
 Then
 ```
-echo -e "DATABASE_URL=postgres://postgres:mypass@localhost/the-tensox-api
+echo -e "DATABASE_URL=postgres://postgres:mypass@localhost/the-tensox
 ROCKET_ADDRESS=localhost
 ROCKET_PORT=8001" > .env
 ```
@@ -39,6 +39,9 @@ ROCKET_PORT=8001" > .env
 
     # POST weather
     curl -d '{"id":1, "x":0, "y":0, "sun":3}' -H "Content-Type: application/json" -X POST http://localhost:8001/weathers
+
+    # PUT weather
+    curl -d '{"id":1, "x":0, "y":0, "sun":4}' -H "Content-Type: application/json" -X PUT http://localhost:8001/weathers/1
     
     # GET weather
     curl http://localhost:8001/weathers
