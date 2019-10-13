@@ -1,14 +1,11 @@
 use connection::DbConn;
 use diesel::result::Error;
-use std::env;
 use weathers;
 use weathers::Weather;
-use rocket::http::Status;
-use rocket::response::status;
+use rocket::{State, http::Status, response::status};
 use rocket_contrib::json::Json;
-use rocket::State;
 use server::Server;
-use std::sync::{Arc, Mutex};
+use std::{env, sync::{Arc, Mutex}};
 
 #[get("/")]
 pub fn all(connection: DbConn) -> Result<Json<Vec<Weather>>, Status> {

@@ -15,7 +15,6 @@ use dotenv::dotenv;
 use server::Server;
 use ws::{listen};
 use std::{thread, time, cell::Cell, rc::Rc};
-use weathers::Weather;
 
 mod weathers;
 mod objects;
@@ -29,7 +28,6 @@ fn main() {
     let c_mutex = mutex.clone();
 
     thread::spawn(move || {
-        let count = Rc::new(Cell::new(0));
         listen(format!("{}:{}", String::from("127.0.0.1"), 3012), |out| {
             let mut lock = c_mutex.try_lock();
             if let Ok(ref mut mutex) = lock {
@@ -42,37 +40,26 @@ fn main() {
             }
         }).unwrap()
     });
-    let ten_millis = time::Duration::from_millis(1000);
 
-    /*
-    loop {
-        thread::sleep(ten_millis);
-        //println!("{:?}", *mutex.lock().unwrap())
-        
-        if !mutex.lock().unwrap().out.is_none() {
-            println!("Sending a message");
-            mutex.lock().unwrap().out.as_ref().unwrap().send("yay");
-        }
-    }*/
 
     let c_mutex = mutex.clone();
     //thread::spawn(move || {
-        rocket::ignite()
-            .manage(connection::init_pool())
-            .manage(c_mutex)
-            .mount("/weathers",
-                routes![weathers::handler::all,
-                        weathers::handler::get,
-                        weathers::handler::post,
-                        weathers::handler::put,
-                        weathers::handler::delete],
-            )
-            .mount("/objects",
-                routes![objects::handler::all,
-                        objects::handler::get,
-                        objects::handler::post,
-                        objects::handler::put,
-                        objects::handler::delete],
-            ).launch();
+    rocket::ignite()
+        .manage(connection::init_pool())
+        .manage(c_mutex)
+        .mount("/weathers",
+            routes![weathers::handler::all,
+                    weathers::handler::get,
+                    weathers::handler::post,
+                    weathers::handler::put,
+                    weathers::handler::delete],
+        )
+        .mount("/objects",
+            routes![objects::handler::all,
+                    objects::handler::get,
+                    objects::handler::post,
+                    objects::handler::put,
+                    objects::handler::delete],
+        ).launch();
     //});
 }

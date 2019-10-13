@@ -47,7 +47,14 @@ ROCKET_PORT=8001" > .env
     curl http://localhost:8001/weathers
 
     # POST object
-    curl -d '{"id":1, "x":0, "y":0, "z":0, "scale_x":0, "scale_y":0, "scale_z":0, "height": 0, "radius": 0}' -H "Content-Type: application/json" -X POST http://localhost:8001/objects
+    # Empty
+    curl -d '{"id": 1}' -H "Content-Type: application/json" -X POST http://localhost:8001/objects
+    # Or
+    curl -d '{"id":1, "position_x":0, "position_y":0, "position_z":0,
+    "rotation_x":0, "rotation_y":0, "rotation_z":0, "scale_x":0, "scale_y":0,
+    "scale_z":0, "mass": 0, "velocity_x": 0, "velocity_y": 0, "velocity_z": 0,
+    "collision_x": 0, "collision_y": 0, "collision_z": 0, "height": 0, "radius": 0}' \
+    -H "Content-Type: application/json" -X POST http://localhost:8001/objects
 
     # GET object
     curl http://localhost:8001/objects

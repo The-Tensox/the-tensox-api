@@ -1,11 +1,12 @@
 use connection::DbConn;
 use diesel::result::Error;
-use std::env;
 use objects;
 use objects::Object;
-use rocket::http::Status;
-use rocket::response::status;
+use rocket::{State, http::Status, response::status};
 use rocket_contrib::json::Json;
+use server::Server;
+use std::{env, sync::{Arc, Mutex}};
+
 
 #[get("/")]
 pub fn all(connection: DbConn) -> Result<Json<Vec<Object>>, Status> {
@@ -29,9 +30,23 @@ pub fn get(id: i32, connection: DbConn) -> Result<Json<Object>, Status> {
 }
 
 #[post("/", format = "application/json", data = "<objects>")]
-pub fn post(objects: Json<Object>, connection: DbConn) -> Result<status::Created<Json<Object>>, Status> {
+pub fn post(objects: Json<Object>, connection: DbConn, server: State<Arc<Mutex<Server>>>) -> Result<status::Created<Json<Object>>, Status> {
     objects::repository::insert(objects.into_inner(), &connection)
-        .map(|objects| object_created(objects))
+        .map(|objects| {
+            let res = object_created(objects.clone());
+            if !server.inner().lock().unwrap().out.is_none() {
+                println!("Sending a message");
+                // Get the Json<Weather>> inside Created with .0 and converts it to string to send
+                // Broadcast the new item to all clients
+                // inner() get the thing inside State, then lock mutex, unwrap ...
+                // We send the serialized data
+                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&objects).unwrap());
+            } else {
+                println!("No clients connected");
+            }
+
+            res
+        })
         .map_err(|error| error_status(error))
 }
 
@@ -50,9 +65,21 @@ fn port() -> String {
 }
 
 #[put("/<id>", format = "application/json", data = "<objects>")]
-pub fn put(id: i32, objects: Json<Object>, connection: DbConn) -> Result<Json<Object>, Status> {
+pub fn put(id: i32, objects: Json<Object>, connection: DbConn, server: State<Arc<Mutex<Server>>>) -> Result<Json<Object>, Status> {
     objects::repository::update(id, objects.into_inner(), &connection)
-        .map(|objects| Json(objects))
+        .map(|objects| {
+            if !server.inner().lock().unwrap().out.is_none() {
+                println!("Sending a message");
+                // Get the Json<Weather>> inside Created with .0 and converts it to string to send
+                // Broadcast the new item to all clients
+                // inner() get the thing inside State, then lock mutex, unwrap ...
+                // We send the serialized data
+                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&objects).unwrap());
+            } else {
+                println!("No clients connected");
+            }
+            Json(objects)
+        })
         .map_err(|error| error_status(error))
 }
 
