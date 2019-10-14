@@ -24,11 +24,11 @@ pub struct Object {
     pub collision_y: Option<f32>,
     pub collision_z: Option<f32>,
     pub height: Option<f32>,
-    pub radius: Option<f32>
+    pub radius: Option<f32>,
 }
 
 #[derive(Insertable, AsChangeset)]
-#[changeset_options(treat_none_as_null="true")]// https://github.com/diesel-rs/diesel/blob/master/guide_drafts/trait_derives.md#aschangeset
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "objects"]
 pub struct InsertableObject {
     pub position_x: Option<f32>,
@@ -48,11 +48,10 @@ pub struct InsertableObject {
     pub collision_y: Option<f32>,
     pub collision_z: Option<f32>,
     pub height: Option<f32>,
-    pub radius: Option<f32>
+    pub radius: Option<f32>,
 }
 
 impl InsertableObject {
-
     fn from_object(objects: Object) -> InsertableObject {
         InsertableObject {
             position_x: objects.position_x,
@@ -72,7 +71,7 @@ impl InsertableObject {
             collision_y: objects.collision_y,
             collision_z: objects.collision_z,
             height: objects.height,
-            radius: objects.radius
+            radius: objects.radius,
         }
     }
 }

@@ -2,9 +2,9 @@
 
 use diesel;
 use diesel::prelude::*;
-use schema::objects;
-use objects::Object;
-use objects::InsertableObject;
+use crate::objects::InsertableObject;
+use crate::objects::Object;
+use crate::schema::objects;
 
 pub fn all(connection: &PgConnection) -> QueryResult<Vec<Object>> {
     objects::table.load::<Object>(&*connection)
@@ -27,6 +27,5 @@ pub fn update(id: i32, objects: Object, connection: &PgConnection) -> QueryResul
 }
 
 pub fn delete(id: i32, connection: &PgConnection) -> QueryResult<usize> {
-    diesel::delete(objects::table.find(id))
-        .execute(connection)
+    diesel::delete(objects::table.find(id)).execute(connection)
 }

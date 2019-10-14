@@ -3,6 +3,12 @@ name = "the-tensox-api"
 version = "0.1.0"
 authors = ["Louis Beaumont <louis.beaumont@gmail.com>"]
 
+repository = "https://github.com/The-Tensox/the-tensox-api"
+readme = "README.md"
+license = "MIT"
+edition = "2018"
+
+
 [dependencies]
 diesel = { version = "1.3.3", features = ["postgres"] }
 dotenv = "0.13.0"

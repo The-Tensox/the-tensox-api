@@ -37,15 +37,6 @@ ROCKET_PORT=8001" > .env
 # Usage
     cargo run &
 
-    # POST weather
-    curl -d '{"id":1, "x":0, "y":0, "sun":3}' -H "Content-Type: application/json" -X POST http://localhost:8001/weathers
-
-    # PUT weather
-    curl -d '{"id":1, "x":0, "y":0, "sun":4}' -H "Content-Type: application/json" -X PUT http://localhost:8001/weathers/1
-    
-    # GET weather
-    curl http://localhost:8001/weathers
-
     # POST object
     # Empty
     curl -d '{"id": 1}' -H "Content-Type: application/json" -X POST http://localhost:8001/objects
@@ -75,5 +66,11 @@ Don't forget ; at the end of SQL query (and upper case)
     # Show tables
     \dt
 
+# Contribute
+
+- Use cargo fmt
+
 # TODO
- - [] When a POST / PUT is done notify the (created / updated) value to the connected clients via websocket
+ - [x] When a POST / PUT is done notify the (created / updated) value to the connected clients via websocket
+ - [ ] Benches [see example](https://github.com/rustsim/ncollide/tree/master/build/ncollide3d/benches)
+ - [ ] Tests
