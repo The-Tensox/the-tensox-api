@@ -6,6 +6,7 @@ use rocket::{State, http::Status, response::status};
 use rocket_contrib::json::Json;
 use server::Server;
 use std::{env, sync::{Arc, Mutex}};
+use serde_json::json;
 
 
 #[get("/")]
@@ -35,12 +36,14 @@ pub fn post(objects: Json<Object>, connection: DbConn, server: State<Arc<Mutex<S
         .map(|objects| {
             let res = object_created(objects.clone());
             if !server.inner().lock().unwrap().out.is_none() {
-                println!("Sending a message");
-                // Get the Json<Weather>> inside Created with .0 and converts it to string to send
-                // Broadcast the new item to all clients
+                println!("Broadcast POST");
+                let msg = json!({
+                    "protocol": "POST".to_owned(),
+                    "data": &objects
+                });
                 // inner() get the thing inside State, then lock mutex, unwrap ...
                 // We send the serialized data
-                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&objects).unwrap());
+                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&msg).unwrap());
             } else {
                 println!("No clients connected");
             }
@@ -69,12 +72,16 @@ pub fn put(id: i32, objects: Json<Object>, connection: DbConn, server: State<Arc
     objects::repository::update(id, objects.into_inner(), &connection)
         .map(|objects| {
             if !server.inner().lock().unwrap().out.is_none() {
-                println!("Sending a message");
+                println!("Broadcast PUT");
+                let msg = json!({
+                    "protocol": "PUT".to_owned(),
+                    "data": &objects
+                });
                 // Get the Json<Weather>> inside Created with .0 and converts it to string to send
                 // Broadcast the new item to all clients
                 // inner() get the thing inside State, then lock mutex, unwrap ...
                 // We send the serialized data
-                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&objects).unwrap());
+                server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&msg).unwrap());
             } else {
                 println!("No clients connected");
             }
@@ -84,10 +91,28 @@ pub fn put(id: i32, objects: Json<Object>, connection: DbConn, server: State<Arc
 }
 
 #[delete("/<id>")]
-pub fn delete(id: i32, connection: DbConn) -> Result<Status, Status> {
+pub fn delete(id: i32, connection: DbConn, server: State<Arc<Mutex<Server>>>) -> Result<Status, Status> {
     match objects::repository::get(id, &connection) {
         Ok(_) => objects::repository::delete(id, &connection)
-            .map(|_| Status::NoContent)
+            .map(|_| {
+                if !server.inner().lock().unwrap().out.is_none() {
+                    println!("Broadcast DELETE");
+                    let msg = json!({
+                        "protocol": "DELETE".to_owned(),
+                        "data": {
+                            "id": id 
+                        }
+                    });
+                    // Get the Json<Weather>> inside Created with .0 and converts it to string to send
+                    // Broadcast the new item to all clients
+                    // inner() get the thing inside State, then lock mutex, unwrap ...
+                    // We send the serialized data
+                    server.inner().lock().unwrap().out.as_ref().unwrap().broadcast(serde_json::to_string(&msg).unwrap());
+                } else {
+                    println!("No clients connected");
+                }
+                Status::NoContent
+            })
             .map_err(|error| error_status(error)),
         Err(error) => Err(error_status(error))
     }

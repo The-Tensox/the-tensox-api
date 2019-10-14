@@ -8,6 +8,7 @@ extern crate rocket_contrib;
 #[macro_use]
 extern crate serde_derive;
 extern crate ws;
+extern crate serde_json;
 
 use std::sync::{Arc, Mutex};
 
