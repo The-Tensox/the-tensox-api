@@ -25,6 +25,7 @@ pub struct Object {
     pub collision_z: Option<f32>,
     pub height: Option<f32>,
     pub radius: Option<f32>,
+    pub kind: Option<String>,
 }
 
 #[derive(Insertable, AsChangeset)]
@@ -49,6 +50,7 @@ pub struct InsertableObject {
     pub collision_z: Option<f32>,
     pub height: Option<f32>,
     pub radius: Option<f32>,
+    pub kind: Option<String>,
 }
 
 impl InsertableObject {
@@ -72,6 +74,7 @@ impl InsertableObject {
             collision_z: objects.collision_z,
             height: objects.height,
             radius: objects.radius,
+            kind: objects.kind,
         }
     }
 }

@@ -14,6 +14,7 @@ extern crate ws;
 
 use std::sync::{Arc, Mutex};
 
+use rocket::{Rocket, Request};
 use dotenv::dotenv;
 use server::Server;
 use std::thread;
@@ -24,29 +25,58 @@ mod objects;
 mod schema;
 mod server;
 
-fn main() {
-    dotenv().ok();
-    let mutex = Arc::new(Mutex::new(Server { out: None }));
-    let c_mutex = mutex.clone();
 
+#[catch(500)]
+fn internal_error() -> &'static str {
+    "Whoops! Looks like we messed up."
+}
+
+#[catch(400)]
+fn not_found(req: &Request) -> String {
+    format!("I couldn't find '{}'. Try something else?", req.uri())
+}
+
+pub fn rocket() -> Rocket {
+    dotenv().ok();
+    let server = Arc::new(Mutex::new(Server { out: None }));
+    let clone_server = server.clone();
+
+    // Starting WebSocket server responsible of the notification of updates(POST/PUT/DELETE) to clients
     thread::spawn(move || {
         listen(format!("{}:{}", String::from("127.0.0.1"), 3012), |out| {
-            let mut lock = c_mutex.try_lock();
-            if let Ok(ref mut mutex) = lock {
-                **mutex = Server { out: Some(out) };
+            let mut lock = clone_server.try_lock();
+            if let Ok(ref mut server) = lock {
+                **server = Server { out: Some(out.clone()) };
             } else {
                 println!("try_lock failed");
             }
-            |_| Ok(())
+            |_|  Ok(())
         })
         .unwrap()
     });
+    
+    /*
+    thread::spawn(move || {
+        loop {
+            handle_input_events();
+            mechanical_world.step(
+                        &mut geometrical_world,
+                        &mut body_set,
+                        &mut collider_set,
+                        &mut constraint_set,
+                        &mut force_generator_set,
+                    );
+            handle_physics_events();
+            render_scene();
+        }
+    });
+    */
 
-    let c_mutex = mutex.clone();
-    //thread::spawn(move || {
+    let clone_server = server.clone();
     rocket::ignite()
+        .register(catchers![internal_error, not_found])
         .manage(connection::init_pool())
-        .manage(c_mutex)
+        .manage(clone_server)
         .mount(
             "/objects",
             routes![
@@ -57,6 +87,8 @@ fn main() {
                 objects::handler::delete
             ],
         )
-        .launch();
-    //});
+}
+
+fn main() {
+    rocket().launch();
 }

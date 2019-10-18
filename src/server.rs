@@ -7,16 +7,13 @@ pub struct Server {
 
 impl Handler for Server {
     fn on_open(&mut self, _: Handshake) -> Result<()> {
-        // Tell the user the current count
-        println!("New client");
-        // We have a new connection, so we increment the connection counter
-        Ok(())
+        // New connection
+        let clone_out = self.out.clone();
+        clone_out.unwrap().send("ok")
     }
 
     fn on_message(&mut self, _: Message) -> Result<()> {
-        // Echo the message back
-        // self.out.send(msg)
-        // println!("Received {}", msg);
+        // Received a message
         Ok(())
     }
 

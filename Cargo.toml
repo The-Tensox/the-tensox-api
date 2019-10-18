@@ -21,7 +21,23 @@ serde = "1"
 serde_derive = "1"
 serde_json = "1"
 
+# Physics
+nalgebra = "0.18"
+# Choose the one you need, or both.
+#ncollide2d = "0.20"
+ncollide3d = "0.20"
+# Choose the one you need, or both.
+#nphysics2d = "0.12"
+nphysics3d = "0.12"
+
+# Benches
+criterion = "0.3"
+
 [dependencies.rocket_contrib]
 default-features = false
 features = ["json"]
 version = "0.4"
+
+[[bench]]
+name = "my_benchmark"
+harness = false
