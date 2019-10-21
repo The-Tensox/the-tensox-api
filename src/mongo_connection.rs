@@ -1,4 +1,3 @@
-/*
 use r2d2::{PooledConnection};
 use r2d2_mongodb::{ConnectionOptions, MongodbConnectionManager, VerifyPeer};
 use rocket::http::Status;
@@ -7,7 +6,9 @@ use rocket::{Outcome, Request, State};
 use std::env;
 use std::ops::Deref;
 use dotenv::dotenv;
+use mongodb;
 use mongodb::db::Database;
+use mongodb::db::ThreadedDatabase;
 
 type Pool = r2d2::Pool<MongodbConnectionManager>;
 
@@ -25,7 +26,7 @@ pub fn init_pool() -> Pool {
         ConnectionOptions::builder()
             .with_host(&mongo_addr, mongo_port.parse::<u16>().unwrap())
             .with_db(&db_name)
-            .with_auth("root", "password")
+            //.with_auth("root", "password")
             .build(),
     );
     match Pool::builder().max_size(64).build(manager) {
@@ -60,5 +61,3 @@ impl Deref for Conn {
         &self.0
     }
 }
-
-*/

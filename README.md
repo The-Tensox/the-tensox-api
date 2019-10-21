@@ -35,8 +35,12 @@ Then
 ```bash
 echo -e "DATABASE_URL=postgres://postgres:mypass@localhost/the-tensox
 ROCKET_ADDRESS=localhost
-ROCKET_PORT=8001" > .env
+ROCKET_PORT=8001
+MONGO_ADDR=localhost
+DB_NAME=the-tensox
+MONGO_PORT=27017" > .env
 ```
+
 
 ```bash
 cargo install diesel_cli --no-default-features --features postgres

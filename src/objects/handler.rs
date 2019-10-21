@@ -1,4 +1,4 @@
-use crate::connection::DbConn;
+use crate::mongo_connection::Conn;
 use diesel::result::Error;
 use crate::objects;
 use objects::Object;
@@ -11,13 +11,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[get("/")]
-pub fn all(connection: DbConn) -> Result<Json<Vec<Object>>, Status> {
-    objects::repository::all(&connection)
-        .map(|objects| Json(objects))
-        .map_err(|error| error_status(error))
-}
-
 fn error_status(error: Error) -> Status {
     match error {
         Error::NotFound => Status::NotFound,
@@ -25,27 +18,32 @@ fn error_status(error: Error) -> Status {
     }
 }
 
+#[get("/")]
+pub fn all(connection: Conn) -> Json<Vec<Object>> {
+    Json(objects::repository::all(&connection))
+}
+
 #[get("/<id>")]
-pub fn get(id: i32, connection: DbConn) -> Result<Json<Object>, Status> {
-    objects::repository::get(id, &connection)
-        .map(|objects| Json(objects))
-        .map_err(|error| error_status(error))
+pub fn get(id: i32, connection: Conn) -> Result<Json<Object>, bool> {
+    match objects::repository::get(id, &connection) {
+        Ok(res) => Ok(Json(res.unwrap())),
+        Err(err) => Err(false)//error_status(err)
+    }
 }
 
 #[post("/", format = "application/json", data = "<objects>")]
 pub fn post(
     objects: Json<Object>,
-    connection: DbConn,
+    connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Result<status::Created<Json<Object>>, Status> {
-    objects::repository::insert(objects.into_inner(), &connection)
-        .map(|objects| {
-            let res = object_created(objects.clone());
+) -> Result<Json<Object>, bool> {
+    match objects::repository::insert(objects.into_inner(), &connection) {
+        Ok(res) => {
             if !server.inner().lock().unwrap().out.is_none() {
                 println!("Broadcast POST");
                 let msg = json!({
                     "protocol": "POST".to_owned(),
-                    "data": &objects
+                    "data": &res
                 });
                 // inner() get the thing inside State, then lock mutex, unwrap ...
                 // We send the serialized data
@@ -61,105 +59,75 @@ pub fn post(
             } else {
                 println!("No clients connected");
             }
-
-            res
-        })
-        .map_err(|error| error_status(error))
-}
-
-fn object_created(objects: Object) -> status::Created<Json<Object>> {
-    status::Created(
-        format!(
-            "{host}:{port}/objects/{id}",
-            host = host(),
-            port = port(),
-            id = objects.id
-        )
-        .to_string(),
-        Some(Json(objects)),
-    )
-}
-
-fn host() -> String {
-    env::var("ROCKET_ADDRESS").expect("ROCKET_ADDRESS must be set")
-}
-
-fn port() -> String {
-    env::var("ROCKET_PORT").expect("ROCKET_PORT must be set")
+            Ok(Json(res))
+        },
+        Err(err) => Err(false)
+    }
 }
 
 #[put("/<id>", format = "application/json", data = "<objects>")]
 pub fn put(
     id: i32,
     objects: Json<Object>,
-    connection: DbConn,
+    connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Result<Json<Object>, Status> {
-    objects::repository::update(id, objects.into_inner(), &connection)
-        .map(|objects| {
-            if !server.inner().lock().unwrap().out.is_none() {
-                println!("Broadcast PUT");
-                let msg = json!({
-                    "protocol": "PUT".to_owned(),
-                    "data": &objects
-                });
-                // Get the Json<Object>> inside Created with .0 and converts it to string to send
-                // Broadcast the new item to all clients
-                // inner() get the thing inside State, then lock mutex, unwrap ...
-                // We send the serialized data
-                server
-                    .inner()
-                    .lock()
-                    .unwrap()
-                    .out
-                    .as_ref()
-                    .unwrap()
-                    .broadcast(serde_json::to_string(&msg).unwrap())
-                    .expect("Failed to broadcast");
-            } else {
-                println!("No clients connected");
-            }
-            Json(objects)
-        })
-        .map_err(|error| error_status(error))
+) -> Json<Object> {
+    let object = objects::repository::update(id, objects.into_inner(), &connection);
+    if !server.inner().lock().unwrap().out.is_none() {
+        println!("Broadcast PUT");
+        let msg = json!({
+            "protocol": "PUT".to_owned(),
+            "data": &object
+        });
+        // Get the Json<Object>> inside Created with .0 and converts it to string to send
+        // Broadcast the new item to all clients
+        // inner() get the thing inside State, then lock mutex, unwrap ...
+        // We send the serialized data
+        server
+            .inner()
+            .lock()
+            .unwrap()
+            .out
+            .as_ref()
+            .unwrap()
+            .broadcast(serde_json::to_string(&msg).unwrap())
+            .expect("Failed to broadcast");
+    } else {
+        println!("No clients connected");
+    }
+    Json(object)
 }
 
 #[delete("/<id>")]
 pub fn delete(
     id: i32,
-    connection: DbConn,
+    connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Result<Status, Status> {
-    match objects::repository::get(id, &connection) {
-        Ok(_) => objects::repository::delete(id, &connection)
-            .map(|_| {
-                if !server.inner().lock().unwrap().out.is_none() {
-                    println!("Broadcast DELETE");
-                    let msg = json!({
-                        "protocol": "DELETE".to_owned(),
-                        "data": {
-                            "id": id
-                        }
-                    });
-                    // Get the Json<Object>> inside Created with .0 and converts it to string to send
-                    // Broadcast the new item to all clients
-                    // inner() get the thing inside State, then lock mutex, unwrap ...
-                    // We send the serialized data
-                    server
-                        .inner()
-                        .lock()
-                        .unwrap()
-                        .out
-                        .as_ref()
-                        .unwrap()
-                        .broadcast(serde_json::to_string(&msg).unwrap())
-                        .expect("Failed to broadcast");
-                } else {
-                    println!("No clients connected");
-                }
-                Status::NoContent
-            })
-            .map_err(|error| error_status(error)),
-        Err(error) => Err(error_status(error)),
+) -> Json<i64> {
+    let id = objects::repository::delete(id, &connection);
+    if !server.inner().lock().unwrap().out.is_none() {
+        println!("Broadcast DELETE");
+        let msg = json!({
+            "protocol": "DELETE".to_owned(),
+            "data": {
+                "id": &id
+            }
+        });
+        // Get the Json<Object>> inside Created with .0 and converts it to string to send
+        // Broadcast the new item to all clients
+        // inner() get the thing inside State, then lock mutex, unwrap ...
+        // We send the serialized data
+        server
+            .inner()
+            .lock()
+            .unwrap()
+            .out
+            .as_ref()
+            .unwrap()
+            .broadcast(serde_json::to_string(&msg).unwrap())
+            .expect("Failed to broadcast");
+    } else {
+        println!("No clients connected");
     }
+    Json(id)
 }

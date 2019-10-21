@@ -3,11 +3,12 @@
 extern crate rocket;
 #[macro_use]
 extern crate diesel;
-// extern crate mongodb;
+#[macro_use(bson, doc)]
+extern crate mongodb;
 extern crate dotenv;
 extern crate r2d2;
 extern crate r2d2_diesel;
-// extern crate r2d2_mongodb;
+extern crate r2d2_mongodb;
 extern crate rocket_contrib;
 #[macro_use]
 extern crate serde_derive;
@@ -22,7 +23,7 @@ use server::Server;
 use std::thread;
 use ws::listen;
 
-// mod cmongo;
+mod mongo_connection;
 mod connection;
 mod objects;
 mod schema;
@@ -78,7 +79,7 @@ pub fn rocket() -> Rocket {
     let clone_server = server.clone();
     rocket::ignite()
         .register(catchers![internal_error, not_found])
-        .manage(connection::init_pool())
+        .manage(mongo_connection::init_pool())
         .manage(clone_server)
         .mount(
             "/objects",
