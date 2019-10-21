@@ -1,20 +1,14 @@
 // See https://rocket.rs/v0.4/guide/testing/#local-dispatching
 #[cfg(test)]
 mod test {
-    // TODO: fix imports
-    /*
-    use super::rocket;
+    use the_tensox_api::rocket;
     use rocket::local::Client;
     use rocket::http::Status;
-    */
 
     #[test]
-    fn hello_world() {
-        /*
+    fn get_objects() {
         let client = Client::new(rocket()).expect("valid rocket instance");
-        let mut response = client.get("/objects").dispatch();
+        let response = client.get("/objects").dispatch();
         assert_eq!(response.status(), Status::Ok);
-        assert_eq!(response.body_string(), Some("Hello, world!".into()));
-        */
     }
 }

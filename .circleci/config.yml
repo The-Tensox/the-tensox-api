@@ -35,6 +35,3 @@ workflows:
       - build-native:
           requires:
             - check-fmt
-      - bench-native:
-          requires:
-            - build-native
