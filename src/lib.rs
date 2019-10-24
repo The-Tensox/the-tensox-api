@@ -1,7 +1,6 @@
 #![feature(decl_macro, proc_macro_hygiene)]
 #[macro_use]
 extern crate rocket;
-#[macro_use(bson, doc)]
 extern crate mongodb;
 extern crate dotenv;
 extern crate r2d2;
@@ -14,8 +13,8 @@ extern crate ws;
 
 use std::sync::{Arc, Mutex};
 
-use rocket::{Rocket, Request};
 use dotenv::dotenv;
+use rocket::{Request, Rocket};
 use server::Server;
 use std::thread;
 use ws::listen;
@@ -23,7 +22,6 @@ use ws::listen;
 mod mongo_connection;
 mod objects;
 mod server;
-
 
 #[catch(500)]
 fn internal_error() -> &'static str {
@@ -45,15 +43,17 @@ pub fn rocket() -> Rocket {
         listen(format!("{}:{}", String::from("127.0.0.1"), 3012), |out| {
             let mut lock = clone_server.try_lock();
             if let Ok(ref mut server) = lock {
-                **server = Server { out: Some(out.clone()) };
+                **server = Server {
+                    out: Some(out.clone()),
+                };
             } else {
                 println!("try_lock failed");
             }
-            |_|  Ok(())
+            |_| Ok(())
         })
         .unwrap()
     });
-    
+
     /*
     thread::spawn(move || {
         loop {
@@ -87,5 +87,4 @@ pub fn rocket() -> Rocket {
                 objects::handler::delete_all
             ],
         )
-    
 }

@@ -1,13 +1,12 @@
-use crate::objects;
 use crate::mongo_connection::Conn;
-use objects::Object;
+use crate::objects;
+use crate::server::Server;
 use mongodb::{doc, error::Error, oid::ObjectId};
+use objects::Object;
 use rocket::{http::Status, State};
 use rocket_contrib::json::Json;
 use serde_json::json;
-use crate::server::Server;
 use std::{
-    env,
     sync::{Arc, Mutex},
 };
 
@@ -68,8 +67,8 @@ pub fn post(
                 println!("No clients connected");
             }
             Ok(Json(res))
-        },
-        Err(err) => Err(error_status(err))
+        }
+        Err(err) => Err(error_status(err)),
     }
 }
 
@@ -106,7 +105,7 @@ pub fn put(
                     println!("No clients connected");
                 }
                 Ok(Json(res))
-            },
+            }
             Err(err) => Err(error_status(err)),
         },
         Err(_) => Err(error_status(Error::DefaultError(String::from(
@@ -149,7 +148,7 @@ pub fn delete(
                     println!("No clients connected");
                 }
                 Ok(Json(id))
-            },
+            }
             Err(err) => Err(error_status(err)),
         },
         Err(_) => Err(error_status(Error::DefaultError(String::from(
@@ -159,7 +158,10 @@ pub fn delete(
 }
 
 #[delete("/")]
-pub fn delete_all(connection: Conn, server: State<Arc<Mutex<Server>>>) -> Result<Json<bool>, Status> {
+pub fn delete_all(
+    connection: Conn,
+    server: State<Arc<Mutex<Server>>>,
+) -> Result<Json<bool>, Status> {
     match objects::repository::delete_all(&connection) {
         Ok(_) => {
             if !server.inner().lock().unwrap().out.is_none() {
@@ -185,7 +187,7 @@ pub fn delete_all(connection: Conn, server: State<Arc<Mutex<Server>>>) -> Result
                 println!("No clients connected");
             }
             Ok(Json(true))
-        },
+        }
         Err(err) => Err(error_status(err)),
     }
 }

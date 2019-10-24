@@ -1,4 +1,4 @@
-use ws::{Handler, Sender, Result, Message, Handshake, CloseCode, Error};
+use ws::{CloseCode, Error, Handler, Handshake, Message, Result, Sender};
 
 #[derive(Debug)]
 pub struct Server {

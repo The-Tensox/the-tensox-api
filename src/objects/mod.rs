@@ -13,7 +13,7 @@ pub struct CapsuleShape {
 }
 
 impl Shape for CapsuleShape {
-    
+
 }
 
 pub struct BoxShape {
@@ -21,7 +21,7 @@ pub struct BoxShape {
 }
 
 impl Shape for BoxShape {
-    
+
 }
 
 pub struct ConvexShape {
@@ -29,7 +29,7 @@ pub struct ConvexShape {
 }
 
 impl Shape for ConvexShape {
-    
+
 }
 */
 

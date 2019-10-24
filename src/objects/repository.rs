@@ -1,6 +1,6 @@
 #![allow(proc_macro_derive_resolution_fallback)]
-use crate::objects::{Object, InsertableObject};
 use crate::mongo_connection::Conn;
+use crate::objects::{InsertableObject, Object};
 use crate::r2d2_mongodb::mongodb::db::ThreadedDatabase;
 use mongodb::{bson, coll::results::DeleteResult, doc, error::Error, oid::ObjectId};
 
