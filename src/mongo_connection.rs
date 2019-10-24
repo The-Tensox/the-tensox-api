@@ -1,14 +1,11 @@
-use r2d2::{PooledConnection};
-use r2d2_mongodb::{ConnectionOptions, MongodbConnectionManager, VerifyPeer};
+use dotenv::dotenv;
+use r2d2::PooledConnection;
+use r2d2_mongodb::{ConnectionOptions, MongodbConnectionManager};
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
 use rocket::{Outcome, Request, State};
 use std::env;
 use std::ops::Deref;
-use dotenv::dotenv;
-use mongodb;
-use mongodb::db::Database;
-use mongodb::db::ThreadedDatabase;
 
 type Pool = r2d2::Pool<MongodbConnectionManager>;
 
@@ -34,7 +31,6 @@ pub fn init_pool() -> Pool {
         Err(e) => panic!("Error: failed to create mongodb pool {}", e),
     }
 }
-
 
 /*
     Create a implementation of FromRequest so Conn can be provided at every api endpoint

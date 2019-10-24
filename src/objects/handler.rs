@@ -1,8 +1,8 @@
-use crate::mongo_connection::Conn;
-use diesel::result::Error;
 use crate::objects;
+use crate::mongo_connection::Conn;
 use objects::Object;
-use rocket::{http::Status, response::status, State};
+use mongodb::{doc, error::Error, oid::ObjectId};
+use rocket::{http::Status, State};
 use rocket_contrib::json::Json;
 use serde_json::json;
 use crate::server::Server;
@@ -13,21 +13,29 @@ use std::{
 
 fn error_status(error: Error) -> Status {
     match error {
-        Error::NotFound => Status::NotFound,
+        Error::CursorNotFoundError => Status::NotFound,
         _ => Status::InternalServerError,
     }
 }
 
 #[get("/")]
-pub fn all(connection: Conn) -> Json<Vec<Object>> {
-    Json(objects::repository::all(&connection))
+pub fn all(connection: Conn) -> Result<Json<Vec<Object>>, Status> {
+    match objects::repository::all(&connection) {
+        Ok(res) => Ok(Json(res)),
+        Err(err) => Err(error_status(err)),
+    }
 }
 
 #[get("/<id>")]
-pub fn get(id: i32, connection: Conn) -> Result<Json<Object>, bool> {
-    match objects::repository::get(id, &connection) {
-        Ok(res) => Ok(Json(res.unwrap())),
-        Err(err) => Err(false)//error_status(err)
+pub fn get(id: String, connection: Conn) -> Result<Json<Object>, Status> {
+    match ObjectId::with_string(&String::from(&id)) {
+        Ok(res) => match objects::repository::get(res, &connection) {
+            Ok(res) => Ok(Json(res.unwrap())),
+            Err(err) => Err(error_status(err)),
+        },
+        Err(_) => Err(error_status(Error::DefaultError(String::from(
+            "Couldn't parse ObjectId",
+        )))),
     }
 }
 
@@ -36,7 +44,7 @@ pub fn post(
     objects: Json<Object>,
     connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Result<Json<Object>, bool> {
+) -> Result<Json<ObjectId>, Status> {
     match objects::repository::insert(objects.into_inner(), &connection) {
         Ok(res) => {
             if !server.inner().lock().unwrap().out.is_none() {
@@ -61,73 +69,123 @@ pub fn post(
             }
             Ok(Json(res))
         },
-        Err(err) => Err(false)
+        Err(err) => Err(error_status(err))
     }
 }
 
 #[put("/<id>", format = "application/json", data = "<objects>")]
 pub fn put(
-    id: i32,
+    id: String,
     objects: Json<Object>,
     connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Json<Object> {
-    let object = objects::repository::update(id, objects.into_inner(), &connection);
-    if !server.inner().lock().unwrap().out.is_none() {
-        println!("Broadcast PUT");
-        let msg = json!({
-            "protocol": "PUT".to_owned(),
-            "data": &object
-        });
-        // Get the Json<Object>> inside Created with .0 and converts it to string to send
-        // Broadcast the new item to all clients
-        // inner() get the thing inside State, then lock mutex, unwrap ...
-        // We send the serialized data
-        server
-            .inner()
-            .lock()
-            .unwrap()
-            .out
-            .as_ref()
-            .unwrap()
-            .broadcast(serde_json::to_string(&msg).unwrap())
-            .expect("Failed to broadcast");
-    } else {
-        println!("No clients connected");
+) -> Result<Json<Object>, Status> {
+    match ObjectId::with_string(&String::from(&id)) {
+        Ok(res) => match objects::repository::update(res, objects.into_inner(), &connection) {
+            Ok(res) => {
+                if !server.inner().lock().unwrap().out.is_none() {
+                    println!("Broadcast PUT");
+                    let msg = json!({
+                        "protocol": "PUT".to_owned(),
+                        "data": &res
+                    });
+                    // Get the Json<Object>> inside Created with .0 and converts it to string to send
+                    // Broadcast the new item to all clients
+                    // inner() get the thing inside State, then lock mutex, unwrap ...
+                    // We send the serialized data
+                    server
+                        .inner()
+                        .lock()
+                        .unwrap()
+                        .out
+                        .as_ref()
+                        .unwrap()
+                        .broadcast(serde_json::to_string(&msg).unwrap())
+                        .expect("Failed to broadcast");
+                } else {
+                    println!("No clients connected");
+                }
+                Ok(Json(res))
+            },
+            Err(err) => Err(error_status(err)),
+        },
+        Err(_) => Err(error_status(Error::DefaultError(String::from(
+            "Couldn't parse ObjectId",
+        )))),
     }
-    Json(object)
 }
 
 #[delete("/<id>")]
 pub fn delete(
-    id: i32,
+    id: String,
     connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Json<i64> {
-    let id = objects::repository::delete(id, &connection);
-    if !server.inner().lock().unwrap().out.is_none() {
-        println!("Broadcast DELETE");
-        let msg = json!({
-            "protocol": "DELETE".to_owned(),
-            "data": {
-                "id": &id
-            }
-        });
-        // Get the Json<Object>> inside Created with .0 and converts it to string to send
-        // Broadcast the new item to all clients
-        // inner() get the thing inside State, then lock mutex, unwrap ...
-        // We send the serialized data
-        server
-            .inner()
-            .lock()
-            .unwrap()
-            .out
-            .as_ref()
-            .unwrap()
-            .broadcast(serde_json::to_string(&msg).unwrap())
-            .expect("Failed to broadcast");
-    } else {
-        println!("No clients connected");
+) -> Result<Json<String>, Status> {
+    match ObjectId::with_string(&String::from(&id)) {
+        Ok(res) => match objects::repository::delete(res, &connection) {
+            Ok(_) => {
+                if !server.inner().lock().unwrap().out.is_none() {
+                    println!("Broadcast DELETE");
+                    let msg = json!({
+                        "protocol": "DELETE".to_owned(),
+                        "data": {
+                            "id": &id
+                        }
+                    });
+                    // Get the Json<Object>> inside Created with .0 and converts it to string to send
+                    // Broadcast the new item to all clients
+                    // inner() get the thing inside State, then lock mutex, unwrap ...
+                    // We send the serialized data
+                    server
+                        .inner()
+                        .lock()
+                        .unwrap()
+                        .out
+                        .as_ref()
+                        .unwrap()
+                        .broadcast(serde_json::to_string(&msg).unwrap())
+                        .expect("Failed to broadcast");
+                } else {
+                    println!("No clients connected");
+                }
+                Ok(Json(id))
+            },
+            Err(err) => Err(error_status(err)),
+        },
+        Err(_) => Err(error_status(Error::DefaultError(String::from(
+            "Couldn't parse ObjectId",
+        )))),
     }
-    Json(id)
+}
+
+#[delete("/")]
+pub fn delete_all(connection: Conn, server: State<Arc<Mutex<Server>>>) -> Result<Json<bool>, Status> {
+    match objects::repository::delete_all(&connection) {
+        Ok(_) => {
+            if !server.inner().lock().unwrap().out.is_none() {
+                println!("Broadcast DELETE ALL");
+                let msg = json!({
+                    "protocol": "DELETE_ALL".to_owned(),
+                    "data": {} // TODO: think & improve the websocket protocol
+                });
+                // Get the Json<Object>> inside Created with .0 and converts it to string to send
+                // Broadcast the new item to all clients
+                // inner() get the thing inside State, then lock mutex, unwrap ...
+                // We send the serialized data
+                server
+                    .inner()
+                    .lock()
+                    .unwrap()
+                    .out
+                    .as_ref()
+                    .unwrap()
+                    .broadcast(serde_json::to_string(&msg).unwrap())
+                    .expect("Failed to broadcast");
+            } else {
+                println!("No clients connected");
+            }
+            Ok(Json(true))
+        },
+        Err(err) => Err(error_status(err)),
+    }
 }

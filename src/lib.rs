@@ -1,13 +1,10 @@
 #![feature(decl_macro, proc_macro_hygiene)]
 #[macro_use]
 extern crate rocket;
-#[macro_use]
-extern crate diesel;
 #[macro_use(bson, doc)]
 extern crate mongodb;
 extern crate dotenv;
 extern crate r2d2;
-extern crate r2d2_diesel;
 extern crate r2d2_mongodb;
 extern crate rocket_contrib;
 #[macro_use]
@@ -24,9 +21,7 @@ use std::thread;
 use ws::listen;
 
 mod mongo_connection;
-mod connection;
 mod objects;
-mod schema;
 mod server;
 
 
@@ -88,7 +83,9 @@ pub fn rocket() -> Rocket {
                 objects::handler::get,
                 objects::handler::post,
                 objects::handler::put,
-                objects::handler::delete
+                objects::handler::delete,
+                objects::handler::delete_all
             ],
         )
+    
 }

@@ -1,124 +1,99 @@
 #![allow(proc_macro_derive_resolution_fallback)]
-use mongodb::{Bson, bson, doc};
-use crate::objects::Object;
+use crate::objects::{Object, InsertableObject};
 use crate::mongo_connection::Conn;
 use crate::r2d2_mongodb::mongodb::db::ThreadedDatabase;
+use mongodb::{bson, coll::results::DeleteResult, doc, error::Error, oid::ObjectId};
 
-pub fn all(connection: &Conn) -> Vec<Object> {
-    // objects::table.load::<Object>(&*connection)
-        let o = Object { 
-                    id: 0, 
-                    position_x: Some(0.0),
-                    position_y: Some(0.0),
-                    position_z: Some(0.0),
-                    rotation_x: Some(0.0),
-                    rotation_y: Some(0.0),
-                    rotation_z: Some(0.0),
-                    scale_x: Some(0.0),
-                    scale_y: Some(0.0),
-                    scale_z: Some(0.0),
-                    mass: Some(0.0),
-                    velocity_x: Some(0.0),
-                    velocity_y: Some(0.0),
-                    velocity_z: Some(0.0),
-                    collision_x: Some(0.0),
-                    collision_y: Some(0.0),
-                    collision_z: Some(0.0),
-                    height: Some(0.0),
-                    radius: Some(0.0),
-                    kind: Some(String::from("")),
-                };
-    Vec::new()
+const COLLECTION: &str = "objects";
+
+pub fn all(connection: &Conn) -> Result<Vec<Object>, Error> {
+    let cursor = connection.collection(COLLECTION).find(None, None).unwrap();
+
+    cursor
+        .map(|result| match result {
+            Ok(doc) => match bson::from_bson(bson::Bson::Document(doc)) {
+                Ok(result_model) => Ok(result_model),
+                Err(_) => Err(Error::DefaultError(String::from(""))),
+            },
+            Err(err) => Err(err),
+        })
+        .collect::<Result<Vec<Object>, Error>>()
 }
 
-pub fn get(id: i32, connection: &Conn) -> Result<Option<Object>, bool> {
-    match connection.collection("objects").find_one( Some(doc!{"id": id}), None) {
-        Ok(db_result) => {
-            match db_result {
-                Some(result_doc) => {
-                    match bson::from_bson(bson::Bson::Document(result_doc)) {
-                        Ok(result_model) => {
-                            return Ok(Some(result_model))
-                        },
-                        Err(err) => {
-                            println!("failed to get model from bson");
-                            return Err(false)
-                        }
-                    }
-                },
-                None => {
-                    println!("No model found");
-                    return Ok(None)
-                }
-            }
+pub fn get(id: ObjectId, connection: &Conn) -> Result<Option<Object>, Error> {
+    match connection
+        .collection(COLLECTION)
+        .find_one(Some(doc! {"_id": id}), None)
+    {
+        Ok(db_result) => match db_result {
+            Some(result_doc) => match bson::from_bson(bson::Bson::Document(result_doc)) {
+                Ok(result_model) => Ok(Some(result_model)),
+                Err(_) => Err(Error::DefaultError(String::from(
+                    "Failed to create reverse BSON",
+                ))),
+            },
+            None => Ok(None),
         },
-        Err(err) => {
-            println!("Failed to delete doc from database:\n{}",err);
-            return Err(false)
-        }
+        Err(err) => Err(err),
     }
 }
 
-pub fn insert(objects: Object, connection: &Conn) -> Result<Object, bool> {
-    match bson::to_bson(&objects) {
-        Ok(model_bson) => {
-            match model_bson{
-                bson::Bson::Document(model_doc) => {
-                    match connection.collection("objects").insert_one( model_doc, None) {
-                        Ok(db_result) => {
-                            return Ok(objects)
+pub fn insert(objects: Object, connection: &Conn) -> Result<ObjectId, Error> {
+    let insertable = InsertableObject::from_object(objects.clone());
+    match bson::to_bson(&insertable) {
+        Ok(model_bson) => match model_bson {
+            bson::Bson::Document(model_doc) => {
+                match connection
+                    .collection(COLLECTION)
+                    .insert_one(model_doc, None)
+                {
+                    Ok(res) => match res.inserted_id {
+                        Some(res) => match bson::from_bson(res) {
+                            Ok(res) => Ok(res),
+                            Err(_) => Err(Error::DefaultError(String::from("Failed to read BSON"))),
                         },
-                        Err(err) => {
-                            println!("Failed to insert new model doc into database:\n{}",err);
-                            return Err(false)
-                        }
-                    }
-                },
-                _ => {
-                    println!("Failed to create document from new model bson");
-                    return Err(false)
+                        None => Err(Error::DefaultError(String::from("None"))),
+                    },
+                    Err(err) => Err(err),
                 }
             }
+            _ => Err(Error::DefaultError(String::from(
+                "Failed to create Document",
+            ))),
         },
-        Err(err) => {
-            println!("Failed to create bson from new model:\n{}",err);
-            return Err(false)
-        }
+        Err(_) => Err(Error::DefaultError(String::from("Failed to create BSON"))),
     }
 }
 
-pub fn update(id: i32, objects: Object, connection: &Conn) -> Object {
-    /*
-    diesel::update(objects::table.find(id))
-        .set(&objects)
-        .get_result(connection)
-    */
-    let o = Object { 
-                id: 0, 
-                position_x: Some(0.0),
-                position_y: Some(0.0),
-                position_z: Some(0.0),
-                rotation_x: Some(0.0),
-                rotation_y: Some(0.0),
-                rotation_z: Some(0.0),
-                scale_x: Some(0.0),
-                scale_y: Some(0.0),
-                scale_z: Some(0.0),
-                mass: Some(0.0),
-                velocity_x: Some(0.0),
-                velocity_y: Some(0.0),
-                velocity_z: Some(0.0),
-                collision_x: Some(0.0),
-                collision_y: Some(0.0),
-                collision_z: Some(0.0),
-                height: Some(0.0),
-                radius: Some(0.0),
-                kind: Some(String::from("")),
-            };
-    o
+pub fn update(id: ObjectId, objects: Object, connection: &Conn) -> Result<Object, Error> {
+    let mut new_object = objects.clone();
+    new_object.id = Some(id.clone());
+    match bson::to_bson(&new_object) {
+        Ok(model_bson) => match model_bson {
+            bson::Bson::Document(model_doc) => {
+                match connection.collection(COLLECTION).replace_one(
+                    doc! {"_id": id},
+                    model_doc,
+                    None,
+                ) {
+                    Ok(_) => Ok(new_object),
+                    Err(err) => Err(err),
+                }
+            }
+            _ => Err(Error::DefaultError(String::from(
+                "Failed to create Document",
+            ))),
+        },
+        Err(_) => Err(Error::DefaultError(String::from("Failed to create BSON"))),
+    }
 }
 
-pub fn delete(id: i32, connection: &Conn) -> i64 {
-    0
-    // diesel::delete(objects::table.find(id)).execute(connection)
+pub fn delete(id: ObjectId, connection: &Conn) -> Result<DeleteResult, Error> {
+    connection
+        .collection(COLLECTION)
+        .delete_one(doc! {"_id": id}, None)
+}
+
+pub fn delete_all(connection: &Conn) -> Result<(), Error> {
+    connection.collection(COLLECTION).drop()
 }
