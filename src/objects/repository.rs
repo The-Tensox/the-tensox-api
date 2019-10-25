@@ -1,31 +1,99 @@
 #![allow(proc_macro_derive_resolution_fallback)]
+use crate::mongo_connection::Conn;
+use crate::objects::{InsertableObject, Object};
+use crate::r2d2_mongodb::mongodb::db::ThreadedDatabase;
+use mongodb::{bson, coll::results::DeleteResult, doc, error::Error, oid::ObjectId};
 
-use diesel;
-use diesel::prelude::*;
-use crate::objects::InsertableObject;
-use crate::objects::Object;
-use crate::schema::objects;
+const COLLECTION: &str = "objects";
 
-pub fn all(connection: &PgConnection) -> QueryResult<Vec<Object>> {
-    objects::table.load::<Object>(&*connection)
+pub fn all(connection: &Conn) -> Result<Vec<Object>, Error> {
+    let cursor = connection.collection(COLLECTION).find(None, None).unwrap();
+
+    cursor
+        .map(|result| match result {
+            Ok(doc) => match bson::from_bson(bson::Bson::Document(doc)) {
+                Ok(result_model) => Ok(result_model),
+                Err(_) => Err(Error::DefaultError(String::from(""))),
+            },
+            Err(err) => Err(err),
+        })
+        .collect::<Result<Vec<Object>, Error>>()
 }
 
-pub fn get(id: i32, connection: &PgConnection) -> QueryResult<Object> {
-    objects::table.find(id).get_result::<Object>(connection)
+pub fn get(id: ObjectId, connection: &Conn) -> Result<Option<Object>, Error> {
+    match connection
+        .collection(COLLECTION)
+        .find_one(Some(doc! {"_id": id}), None)
+    {
+        Ok(db_result) => match db_result {
+            Some(result_doc) => match bson::from_bson(bson::Bson::Document(result_doc)) {
+                Ok(result_model) => Ok(Some(result_model)),
+                Err(_) => Err(Error::DefaultError(String::from(
+                    "Failed to create reverse BSON",
+                ))),
+            },
+            None => Ok(None),
+        },
+        Err(err) => Err(err),
+    }
 }
 
-pub fn insert(objects: Object, connection: &PgConnection) -> QueryResult<Object> {
-    diesel::insert_into(objects::table)
-        .values(&InsertableObject::from_object(objects))
-        .get_result(connection)
+pub fn insert(objects: Object, connection: &Conn) -> Result<ObjectId, Error> {
+    let insertable = InsertableObject::from_object(objects.clone());
+    match bson::to_bson(&insertable) {
+        Ok(model_bson) => match model_bson {
+            bson::Bson::Document(model_doc) => {
+                match connection
+                    .collection(COLLECTION)
+                    .insert_one(model_doc, None)
+                {
+                    Ok(res) => match res.inserted_id {
+                        Some(res) => match bson::from_bson(res) {
+                            Ok(res) => Ok(res),
+                            Err(_) => Err(Error::DefaultError(String::from("Failed to read BSON"))),
+                        },
+                        None => Err(Error::DefaultError(String::from("None"))),
+                    },
+                    Err(err) => Err(err),
+                }
+            }
+            _ => Err(Error::DefaultError(String::from(
+                "Failed to create Document",
+            ))),
+        },
+        Err(_) => Err(Error::DefaultError(String::from("Failed to create BSON"))),
+    }
 }
 
-pub fn update(id: i32, objects: Object, connection: &PgConnection) -> QueryResult<Object> {
-    diesel::update(objects::table.find(id))
-        .set(&objects)
-        .get_result(connection)
+pub fn update(id: ObjectId, objects: Object, connection: &Conn) -> Result<Object, Error> {
+    let mut new_object = objects.clone();
+    new_object.id = Some(id.clone());
+    match bson::to_bson(&new_object) {
+        Ok(model_bson) => match model_bson {
+            bson::Bson::Document(model_doc) => {
+                match connection.collection(COLLECTION).replace_one(
+                    doc! {"_id": id},
+                    model_doc,
+                    None,
+                ) {
+                    Ok(_) => Ok(new_object),
+                    Err(err) => Err(err),
+                }
+            }
+            _ => Err(Error::DefaultError(String::from(
+                "Failed to create Document",
+            ))),
+        },
+        Err(_) => Err(Error::DefaultError(String::from("Failed to create BSON"))),
+    }
 }
 
-pub fn delete(id: i32, connection: &PgConnection) -> QueryResult<usize> {
-    diesel::delete(objects::table.find(id)).execute(connection)
+pub fn delete(id: ObjectId, connection: &Conn) -> Result<DeleteResult, Error> {
+    connection
+        .collection(COLLECTION)
+        .delete_one(doc! {"_id": id}, None)
+}
+
+pub fn delete_all(connection: &Conn) -> Result<(), Error> {
+    connection.collection(COLLECTION).drop()
 }

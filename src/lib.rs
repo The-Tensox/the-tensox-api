@@ -1,13 +1,10 @@
 #![feature(decl_macro, proc_macro_hygiene)]
 #[macro_use]
 extern crate rocket;
-#[macro_use]
-extern crate diesel;
-// extern crate mongodb;
+extern crate mongodb;
 extern crate dotenv;
 extern crate r2d2;
-extern crate r2d2_diesel;
-// extern crate r2d2_mongodb;
+extern crate r2d2_mongodb;
 extern crate rocket_contrib;
 #[macro_use]
 extern crate serde_derive;
@@ -16,18 +13,15 @@ extern crate ws;
 
 use std::sync::{Arc, Mutex};
 
-use rocket::{Rocket, Request};
 use dotenv::dotenv;
+use rocket::{Request, Rocket};
 use server::Server;
 use std::thread;
 use ws::listen;
 
-// mod cmongo;
-mod connection;
+mod mongo_connection;
 mod objects;
-mod schema;
 mod server;
-
 
 #[catch(500)]
 fn internal_error() -> &'static str {
@@ -49,15 +43,17 @@ pub fn rocket() -> Rocket {
         listen(format!("{}:{}", String::from("127.0.0.1"), 3012), |out| {
             let mut lock = clone_server.try_lock();
             if let Ok(ref mut server) = lock {
-                **server = Server { out: Some(out.clone()) };
+                **server = Server {
+                    out: Some(out.clone()),
+                };
             } else {
                 println!("try_lock failed");
             }
-            |_|  Ok(())
+            |_| Ok(())
         })
         .unwrap()
     });
-    
+
     /*
     thread::spawn(move || {
         loop {
@@ -78,7 +74,7 @@ pub fn rocket() -> Rocket {
     let clone_server = server.clone();
     rocket::ignite()
         .register(catchers![internal_error, not_found])
-        .manage(connection::init_pool())
+        .manage(mongo_connection::init_pool())
         .manage(clone_server)
         .mount(
             "/objects",
@@ -87,7 +83,8 @@ pub fn rocket() -> Rocket {
                 objects::handler::get,
                 objects::handler::post,
                 objects::handler::put,
-                objects::handler::delete
+                objects::handler::delete,
+                objects::handler::delete_all
             ],
         )
 }

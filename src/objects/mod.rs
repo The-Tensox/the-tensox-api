@@ -1,12 +1,42 @@
 #![allow(proc_macro_derive_resolution_fallback)]
-use super::schema::objects;
 
 pub mod handler;
 pub mod repository;
+use mongodb::bson;
+/*
+trait Shape {
 
-#[derive(Queryable, AsChangeset, Serialize, Deserialize, Debug, Clone)]
+}
+
+pub struct CapsuleShape {
+
+}
+
+impl Shape for CapsuleShape {
+
+}
+
+pub struct BoxShape {
+
+}
+
+impl Shape for BoxShape {
+
+}
+
+pub struct ConvexShape {
+
+}
+
+impl Shape for ConvexShape {
+
+}
+*/
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Object {
-    pub id: i32,
+    #[serde(rename = "_id")] // Use MongoDB's special primary key field name when serializing
+    pub id: Option<bson::oid::ObjectId>,
     pub position_x: Option<f32>,
     pub position_y: Option<f32>,
     pub position_z: Option<f32>,
@@ -28,9 +58,7 @@ pub struct Object {
     pub kind: Option<String>,
 }
 
-#[derive(Insertable, AsChangeset)]
-#[changeset_options(treat_none_as_null = "true")]
-#[table_name = "objects"]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InsertableObject {
     pub position_x: Option<f32>,
     pub position_y: Option<f32>,
