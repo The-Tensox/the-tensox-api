@@ -11,13 +11,19 @@
 
 ```bash
 sudo apt update
-sudo apt install mongodb-org
+sudo apt install mongodb
 ```
 
 Check if mongodb is healthy
 
 ```bash
 service mongodb status
+```
+
+```bash
+echo -e "MONGO_ADDR=localhost
+DB_NAME=rustlang-rocket-mongodb
+MONGO_PORT=27017" > .env
 ```
 
 ## Usage
@@ -28,10 +34,7 @@ cargo run &
 # POST
 curl -d '{"position_x": 13}' -H "Content-Type: application/json" -X POST http://localhost:8001/objects
 # Or
-curl -d '{"position_x":0, "position_y":0, "position_z":0,
-"rotation_x":0, "rotation_y":0, "rotation_z":0, "scale_x":0, "scale_y":0,
-"scale_z":0, "mass": 0, "velocity_x": 0, "velocity_y": 0, "velocity_z": 0,
-"collision_x": 0, "collision_y": 0, "collision_z": 0, "height": 0, "radius": 0, "kind": "rock"}' \
+curl -d '{"mesh": {"Array": {"meshes": [{"normals": [0.0, 0.0, 0.0], "uvs": [0.0, 0.0], "vertices": [1.0, 1.0, 1.0]}]}}}' \
 -H "Content-Type: application/json" -X POST http://localhost:8001/objects
 # Or empty
 curl -d '{}' -H "Content-Type: application/json" -X POST http://localhost:8001/objects
@@ -49,7 +52,7 @@ curl http://localhost:8001/objects/5db15a1f6539303d5708901e
 curl -H "Content-Type: application/json" -X DELETE http://localhost:8001/objects/5db15a1f6539303d5708901e
 
 # DELETE all
-curl -H "Content-Type: application/json" -X DELETE http://localhost:8001/objects
+curl -X DELETE localhost:8001/objects
 ```
 
 ## Tests

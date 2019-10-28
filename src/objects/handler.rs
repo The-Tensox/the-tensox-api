@@ -43,7 +43,7 @@ pub fn post(
     objects: Json<Object>,
     connection: Conn,
     server: State<Arc<Mutex<Server>>>,
-) -> Result<Json<ObjectId>, Status> {
+) -> Result<Json<Object>, Status> {
     match objects::repository::insert(objects.into_inner(), &connection) {
         Ok(res) => {
             if !server.inner().lock().unwrap().out.is_none() {

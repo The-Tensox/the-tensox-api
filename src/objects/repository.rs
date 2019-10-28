@@ -38,7 +38,7 @@ pub fn get(id: ObjectId, connection: &Conn) -> Result<Option<Object>, Error> {
     }
 }
 
-pub fn insert(objects: Object, connection: &Conn) -> Result<ObjectId, Error> {
+pub fn insert(objects: Object, connection: &Conn) -> Result<Object, Error> {
     let insertable = InsertableObject::from_object(objects.clone());
     match bson::to_bson(&insertable) {
         Ok(model_bson) => match model_bson {
@@ -49,7 +49,7 @@ pub fn insert(objects: Object, connection: &Conn) -> Result<ObjectId, Error> {
                 {
                     Ok(res) => match res.inserted_id {
                         Some(res) => match bson::from_bson(res) {
-                            Ok(res) => Ok(res),
+                            Ok(res) => Ok(InsertableObject::assign_id(insertable, res)),
                             Err(_) => Err(Error::DefaultError(String::from("Failed to read BSON"))),
                         },
                         None => Err(Error::DefaultError(String::from("None"))),
