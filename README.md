@@ -14,7 +14,7 @@ sudo apt update
 sudo apt install mongodb
 ```
 
-Check if mongodb is healthy
+Check mongodb status
 
 ```bash
 service mongodb status
@@ -72,3 +72,4 @@ cargo test -- --test-threads=1
  - [x] When a POST / PUT is done notify the (created / updated) value to the connected clients via websocket
  - [ ] Benches [see example](https://bheisler.github.io/criterion.rs/book/getting_started.html)
  - [x] Tests
+ - [ ] Documentation [see](https://doc.rust-lang.org/rust-by-example/meta/doc.html)

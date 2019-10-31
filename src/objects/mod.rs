@@ -85,7 +85,7 @@ impl InsertableObject {
             velocity_x: Some(objects.velocity_x.unwrap_or(0.0)),
             velocity_y: Some(objects.velocity_y.unwrap_or(0.0)),
             velocity_z: Some(objects.velocity_z.unwrap_or(0.0)),
-            kind: Some(objects.kind.unwrap_or(String::from("ground"))),
+            kind: Some(objects.kind.unwrap_or(String::from("random"))),
             mesh: Some(objects.mesh.unwrap_or(Shape::Box{ x: 1.0, y: 1.0, z: 1.0 })),
             collision: Some(objects.collision.unwrap_or(Shape::Box{ x: 1.0, y: 1.0, z: 1.0 })),
         }

@@ -2,14 +2,27 @@
 use crate::mongo_connection::Conn;
 use crate::objects::{InsertableObject, Object};
 use crate::r2d2_mongodb::mongodb::db::ThreadedDatabase;
-use mongodb::{bson, coll::results::DeleteResult, doc, error::Error, oid::ObjectId};
+use mongodb::{bson, coll::results::DeleteResult, doc, error::Error, oid::ObjectId, coll::options::FindOptions};
 
 const COLLECTION: &str = "objects";
 
-pub fn all(connection: &Conn) -> Result<Vec<Object>, Error> {
-    let cursor = connection.collection(COLLECTION).find(None, None).unwrap();
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ObjectsItemsLeft {
+    pub objects: Vec<Object>,
+    pub items_left: i64
+}
 
-    cursor
+/// Returns objects and items left
+/// items left are computed as follow: total items - skip option - batch size (found)
+/// 
+/// # Arguments
+///
+/// * `options` - Options for the query
+///
+pub fn all(options: Option<FindOptions>, connection: &Conn) -> Result<ObjectsItemsLeft, Error> {
+    let cursor = connection.collection(COLLECTION).find(None, options.clone()).unwrap();
+    let mut items_left = count(connection).expect("");
+    let objects = cursor
         .map(|result| match result {
             Ok(doc) => match bson::from_bson(bson::Bson::Document(doc)) {
                 Ok(result_model) => Ok(result_model),
@@ -17,7 +30,17 @@ pub fn all(connection: &Conn) -> Result<Vec<Object>, Error> {
             },
             Err(err) => Err(err),
         })
-        .collect::<Result<Vec<Object>, Error>>()
+        .collect::<Result<Vec<Object>, Error>>();
+    match objects {
+        Ok(obj) => {
+                match options {
+                    Some(o) => items_left = items_left - o.skip.unwrap_or(0) - obj.len() as i64,
+                    None => items_left = 0 // No options = we want to get it all
+                }
+                Ok(ObjectsItemsLeft{objects: obj.clone(), items_left: items_left})
+            },
+        Err(err) => Err(err)
+    }
 }
 
 pub fn get(id: ObjectId, connection: &Conn) -> Result<Option<Object>, Error> {
@@ -96,4 +119,8 @@ pub fn delete(id: ObjectId, connection: &Conn) -> Result<DeleteResult, Error> {
 
 pub fn delete_all(connection: &Conn) -> Result<(), Error> {
     connection.collection(COLLECTION).drop()
+}
+
+pub fn count(connection: &Conn) -> Result<i64, Error> {
+    connection.collection(COLLECTION).count(None, None)
 }

@@ -80,11 +80,13 @@ pub fn rocket() -> Rocket {
             "/objects",
             routes![
                 objects::handler::all,
+                objects::handler::page,
                 objects::handler::get,
                 objects::handler::post,
                 objects::handler::put,
                 objects::handler::delete,
-                objects::handler::delete_all
+                objects::handler::delete_all,
+                objects::handler::count
             ],
         )
 }
